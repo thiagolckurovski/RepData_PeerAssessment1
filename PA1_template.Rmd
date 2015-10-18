@@ -5,21 +5,69 @@ output:
     keep_md: true
 ---
 
+```{r setOptions, echo=FALSE, results='hide'}
+options(scipen=999)
+```
 
 ## Loading and preprocessing the data
+```{r}
+data = read.csv(unz("activity.zip", filename = "activity.csv"), colClasses = c(NA, "Date", NA))
+head(data)
+```
 
 
 
-## What is mean total number of steps taken per day?
+## What are the mean and total number of steps taken per day?
+```{r}
+totalSteps = aggregate(list(Sum = data$steps), list(Date = data$date), sum, na.rm = TRUE)
+hist(as.numeric(totalSteps$Sum), main = "Histogram of total steps per day", xlab = "Number of steps per day", ylab = "Frequency (number of days)")
+mean = mean(totalSteps$Sum)
+median = median(totalSteps$Sum)
+```
 
-
+The mean of the total number of steps taken per day is `r mean` and the median is `r median`.
 
 ## What is the average daily activity pattern?
+```{r}
+meanPerDay = aggregate(list("Mean Per Day" = data$steps), list(Interval = data$interval), mean, na.rm = TRUE)
+plot(meanPerDay, type = "l", xlab = "Interval", ylab = "Mean Per Interval")
+maxInterval = meanPerDay$Interval[which.max(meanPerDay$Mean.Per.Day)]
+```
 
-
+The five-minute interval containing the maximum value is the interval `r maxInterval`.
 
 ## Imputing missing values
+```{r}
+numNA = sum(sapply(data, is.na))
+```
+The total number of missing values in the dataset is `r numNA`.  
+One strategy for substituting missing values is using the mean of steps in the same interval:
 
+```{r}
+data[is.na(data$steps), "steps"] <- meanPerDay[match(data[is.na(data$steps), "interval"], meanPerDay$Interval), "Mean.Per.Day"]
+totalSteps2 = aggregate(list(Sum = data$steps), list(Date = data$date), sum, na.rm = TRUE)
+hist(as.numeric(totalSteps2$Sum), main = "Histogram of total steps per day", xlab = "Number of steps per day", ylab = "Frequency (number of days)")
+mean2 = mean(totalSteps2$Sum)
+median2 = median(totalSteps2$Sum)
+```
 
+The mean of the total number of steps taken per day for the imputed dataset is `r mean2` and the median is `r median2`.
 
 ## Are there differences in activity patterns between weekdays and weekends?
+```{r}
+data$DayType <- factor(c("weekday", "weekend")[format(data$date, "%u") %in% c(6, 7) + 1L])
+dataWeekend <- data[data$DayType == "weekend",]
+dataWeekday <- data[data$DayType == "weekday",]
+meanPerDayWeekend = aggregate(list("Mean Per Day" = dataWeekend$steps), list(Interval = dataWeekend$interval), mean)
+meanPerDayWeekday = aggregate(list("Mean Per Day" = dataWeekday$steps), list(Interval = dataWeekday$interval), mean)
+
+plot(meanPerDayWeekday, type = "l", col = "red", ylim=c(0.0,250.0), xlim=c(0.0,2300.0), xlab = "Interval", ylab = "Mean Per Interval")
+par(new=TRUE)
+plot(meanPerDayWeekend, type = "l", col = "blue", ylim=c(0.0,250.0), xlim=c(0.0,2500.0), xlab = "", ylab = "", axes = FALSE)
+legend("topright", 
+       c("Weekdays","Weekends"), 
+       horiz=TRUE,
+       lty=c(1,1), 
+       lwd=c(2,2), 
+       col=c("red","blue"))
+```
